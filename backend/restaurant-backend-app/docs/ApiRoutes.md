@@ -1182,10 +1182,15 @@ Response: 200 OK
 ### `POST` /group-reservations/{groupReservationId}/submit
 Response: 200 OK
 ```json
-{
-  "message": "Group reservation pre-order submitted successfully."
-}
+[
+  {
+    "dishId": "string",
+    "quantity": 1
+  }
+]
 ```
+The request body is `{ "reservationId": "string" }`. Only submitted guest
+sessions are included; items with the same `dishId` are combined.
 
 ### `GET` /guest/groups/{groupReservationId}/sessions
 Response: 200 OK
