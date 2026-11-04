@@ -1190,14 +1190,36 @@ Response: 200 OK
 ### `GET` /guest/groups/{groupReservationId}/sessions
 Response: 200 OK
 ```json
-[
-  {
-    "id": "string",
-    "groupReservationId": "string",
-    "guestName": "string",
-    "status": "string"
-  }
-]
+{
+  "participants": [
+    {
+      "id": "string",
+      "type": "Owner",
+      "name": "string",
+      "items": [
+        {
+          "dish": {},
+          "quantity": 1
+        }
+      ],
+      "total": 0,
+      "isSubmitted": false
+    }
+  ],
+  "total": 0
+}
+```
+Authorization:
+- `401` if the access token is missing
+- `403` if the requester is not the reservation owner
+- `404` if the group reservation or its parent reservation does not exist
+
+An empty group returns:
+```json
+{
+  "participants": [],
+  "total": 0
+}
 ```
 
 ### `DELETE` /guest/groups/{groupReservationId}/sessions/{guestSessionId}
