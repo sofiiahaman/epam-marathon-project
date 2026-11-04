@@ -6,12 +6,14 @@
             - main
           paths:
             - "frontend/restaurant-frontend-app/**"
+            - ".github/workflows/pr.yml"
 
         push:
           branches: 
             - main
           paths:
             - 'frontend/restaurant-frontend-app/**'
+            - '.github/workflows/pr.yml'
         workflow_dispatch:
 
     concurrency:
