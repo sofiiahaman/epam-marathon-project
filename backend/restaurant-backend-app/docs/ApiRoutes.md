@@ -554,15 +554,6 @@ Response: `200 OK`
 }
 ```
 
-### `GET` /reservations/{reservationId}/guest-session-id
-Response: `200 OK`
-```json
-{
-  "guestSessionId": "string"
-}
-```
-
-
 ### `DELETE` /reservations
 Request body:
 ```json
@@ -1182,28 +1173,72 @@ Response: 200 OK
 ### `POST` /group-reservations/{groupReservationId}/submit
 Response: 200 OK
 ```json
-{
-  "message": "Group reservation pre-order submitted successfully."
-}
+[
+  {
+    "dishId": "string",
+    "quantity": 1
+  }
+]
 ```
+The request body is `{ "reservationId": "string" }`. Only submitted guest
+sessions are included; items with the same `dishId` are combined.
 
 ### `GET` /guest/groups/{groupReservationId}/sessions
 Response: 200 OK
 ```json
-[
-  {
-    "id": "string",
-    "groupReservationId": "string",
-    "guestName": "string",
-    "status": "string"
-  }
-]
+{
+  "participants": [
+    {
+      "id": "string",
+      "type": "Owner",
+      "name": "string",
+      "items": [
+        {
+          "dish": {},
+          "quantity": 1
+        }
+      ],
+      "total": 0,
+      "isSubmitted": false
+    }
+  ],
+  "total": 0
+}
 ```
+Authorization:
+- `401` if the access token is missing
+- `403` if the requester is not the reservation owner
+- `404` if the group reservation or its parent reservation does not exist
+
+An empty group returns:
+```json
+{
+  "participants": [],
+  "total": 0
+}
+```
+
+### `GET` /reservations/{reservationId}/guest-session-id
+Response: 200 OK
+```json
+{
+  "guestSessionId": "string"
+}
+```
+Only the reservation owner may access this endpoint. It returns `401` without
+an access token, `403` for another user, and `404` when the reservation,
+group reservation, or owner session does not exist.
 
 ### `DELETE` /guest/groups/{groupReservationId}/sessions/{guestSessionId}
 Response: 200 OK
 ```json
 {
-  "message": "Guest session removed from group successfully."
+  "participants": [],
+  "total": 0
 }
 ```
+The response is the updated group snapshot. Only the reservation owner may
+delete a guest session. Missing sessions return `404`, sessions belonging to
+another group return `400`, and non-owners return `403`. The owner session
+cannot be deleted and returns `400`. Removing the last guest returns an empty
+`participants` array and `total: 0`.

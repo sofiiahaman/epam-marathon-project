@@ -15,6 +15,7 @@ public interface IGuestSessionRepository
     Task<GuestSession?> GetByTokenHash(string tokenHash);
 
     Task<List<GuestSession>> GetAllByGroupReservationIdAsync(string groupReservationId);
+    Task<GuestSession?> GetOwnerSessionByGroupReservationIdAsync(string groupReservationId);
 
     Task SaveAsync(GuestSession guestSession);
 

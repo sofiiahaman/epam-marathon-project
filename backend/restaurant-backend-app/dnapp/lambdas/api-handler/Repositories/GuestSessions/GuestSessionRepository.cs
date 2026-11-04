@@ -45,6 +45,12 @@ public class GuestSessionRepository(IDynamoDBContext context) : IGuestSessionRep
         }).GetRemainingAsync();
     }
 
+    public async Task<GuestSession?> GetOwnerSessionByGroupReservationIdAsync(string groupReservationId)
+    {
+        var sessions = await GetAllByGroupReservationIdAsync(groupReservationId);
+        return sessions.FirstOrDefault(session => session.IsOwnerSession);
+    }
+
     public async Task SaveAsync(GuestSession guestSession) => await context.SaveAsync(guestSession, new SaveConfig
     {
         OverrideTableName = ResourceNames.GuestSessionTableName
