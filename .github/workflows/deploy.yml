@@ -16,7 +16,6 @@ on:
         type: boolean
 
 permissions:
-  id-token: write
   contents: read
 
 env:
@@ -31,25 +30,34 @@ jobs:
     concurrency:
       group: deploy
       cancel-in-progress: false
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
+      - name: Check AWS configuration
+        if: env.AWS_ACCESS_KEY_ID == '' || env.AWS_SECRET_ACCESS_KEY == ''
+        run: echo "::warning::Backend deployment skipped because AWS access key secrets are not configured."
+
+      - name: Configure AWS Credentials
+        if: env.AWS_ACCESS_KEY_ID != '' && env.AWS_SECRET_ACCESS_KEY != ''
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE }}
-          aws-region: ${{ env.AWS_REGION }}
-          role-session-name: syndicate-${{ github.run_id }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-north-1
 
       - name: Verify identity
+        if: env.AWS_ACCESS_KEY_ID != '' && env.AWS_SECRET_ACCESS_KEY != ''
         run: aws sts get-caller-identity
 
-      - name: Setup .NET 8
+      - name: Setup .NET 10
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: "8.x"
+          dotnet-version: "10.0.x"
 
       - name: Setup Python 3.11
         uses: actions/setup-python@v5
@@ -72,14 +80,14 @@ jobs:
         run: syndicate build
 
       - name: Syndicate deploy
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.deploy }}
+        if: ${{ env.AWS_ACCESS_KEY_ID != '' && env.AWS_SECRET_ACCESS_KEY != '' && github.event_name == 'workflow_dispatch' && inputs.deploy }}
         working-directory: ${{ env.APP_DIR }}
         env:
           SDCT_CONF: .syndicate-config-restaurant-backend-app
         run: syndicate deploy --deploy_name ${{ env.DEPLOY_NAME }}
 
       - name: Syndicate update
-        if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && !inputs.deploy) }}
+        if: ${{ env.AWS_ACCESS_KEY_ID != '' && env.AWS_SECRET_ACCESS_KEY != '' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && !inputs.deploy)) }}
         working-directory: ${{ env.APP_DIR }}
         env:
           SDCT_CONF: .syndicate-config-restaurant-backend-app
