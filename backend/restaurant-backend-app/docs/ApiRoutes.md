@@ -1222,6 +1222,17 @@ An empty group returns:
 }
 ```
 
+### `GET` /reservations/{reservationId}/guest-session-id
+Response: 200 OK
+```json
+{
+  "guestSessionId": "string"
+}
+```
+Only the reservation owner may access this endpoint. It returns `401` without
+an access token, `403` for another user, and `404` when the reservation,
+group reservation, or owner session does not exist.
+
 ### `DELETE` /guest/groups/{groupReservationId}/sessions/{guestSessionId}
 Response: 200 OK
 ```json

@@ -867,6 +867,63 @@ public class GuestSessionServiceTests
         Assert.Equal(0, result.Total);
     }
 
+    [Fact]
+    public async Task CreateGroupOwnerSessionAsync_DoesNotDuplicateExistingSession()
+    {
+        var existing = new GuestSession
+        {
+            Id = "owner-session",
+            GroupReservationId = "group",
+            GuestName = "Owner",
+            IsOwnerSession = true,
+            Dishes = []
+        };
+        _mockGuestSessionRepository
+            .Setup(r => r.GetOwnerSessionByGroupReservationIdAsync("group"))
+            .ReturnsAsync(existing);
+
+        await _guestSessionService.CreateGroupOwnerSessionAsync("owner", "group");
+
+        _mockGuestSessionRepository.Verify(r => r.SaveAsync(It.IsAny<GuestSession>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetOwnerSessionIdAsync_Owner_ReturnsSessionId()
+    {
+        var reservation = new Reservation { Id = "reservation", CustomerId = "owner", TableId = "table", WaiterId = "waiter" };
+        var group = new GroupReservation
+        {
+            GroupReservationId = "group",
+            ReservationId = reservation.Id,
+            ReservationToken = "token"
+        };
+        var session = new GuestSession
+        {
+            Id = "owner-session",
+            GroupReservationId = group.GroupReservationId,
+            GuestName = "Owner",
+            IsOwnerSession = true,
+            Dishes = []
+        };
+        _mockReservationRepository.Setup(r => r.GetReservationByIdAsync(reservation.Id)).ReturnsAsync(reservation);
+        _mockGroupReservationRepository.Setup(r => r.GetByReservationIdAsync(reservation.Id)).ReturnsAsync(group);
+        _mockGuestSessionRepository.Setup(r => r.GetOwnerSessionByGroupReservationIdAsync(group.GroupReservationId)).ReturnsAsync(session);
+
+        var result = await _guestSessionService.GetOwnerSessionIdAsync("owner", reservation.Id);
+
+        Assert.Equal(session.Id, result);
+    }
+
+    [Fact]
+    public async Task GetOwnerSessionIdAsync_NonOwner_ThrowsForbidden()
+    {
+        var reservation = new Reservation { Id = "reservation", CustomerId = "owner", TableId = "table", WaiterId = "waiter" };
+        _mockReservationRepository.Setup(r => r.GetReservationByIdAsync(reservation.Id)).ReturnsAsync(reservation);
+
+        await Assert.ThrowsAsync<ActionForbiddenException>(() =>
+            _guestSessionService.GetOwnerSessionIdAsync("guest", reservation.Id));
+    }
+
     private void SetupOwner(GroupReservation group, Reservation reservation, List<GuestSession> sessions)
     {
         _mockGroupReservationRepository.Setup(r => r.GetGroupReservationByIdAsync(group.GroupReservationId)).ReturnsAsync(group);

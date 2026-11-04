@@ -9,6 +9,7 @@ using APIHandler.Repositories.Reservations;
 using APIHandler.Repositories.Tables;
 using APIHandler.Services.Auth;
 using APIHandler.Services.Locations;
+using APIHandler.Services.GuestSessions;
 using System;
 using System.Threading.Tasks;
 
@@ -19,6 +20,7 @@ public class GroupReservationService(
     ITableRepository tableRepository,
     IReservationRepository reservationRepository,
     IGuestSessionRepository guestSessionRepository,
+    IGuestSessionService guestSessionService,
     IUserService userService,
     ILocationService locationService) : IGroupReservationService
 {
@@ -73,6 +75,9 @@ public class GroupReservationService(
 
     public async Task<GroupReservation> CreateGroupReservationAsync(string reservationId)
     {
+        var reservation = await reservationRepository.GetReservationByIdAsync(reservationId)
+            ?? throw new ReservationNotFoundException($"Reservation {reservationId} was not found.");
+
         var groupReservation = new GroupReservation
         {
             GroupReservationId = Guid.NewGuid().ToString(),
@@ -82,6 +87,9 @@ public class GroupReservationService(
         };
 
         await groupReservationRepository.SaveGroupReservationAsync(groupReservation);
+        if (!string.IsNullOrWhiteSpace(reservation.CustomerId))
+            await guestSessionService.CreateGroupOwnerSessionAsync(reservation.CustomerId, groupReservation.GroupReservationId);
+
         return groupReservation;
     }
 
@@ -89,7 +97,10 @@ public class GroupReservationService(
     {
         GroupReservation? group = await groupReservationRepository.GetByReservationIdAsync(reservationId);
         if (group is not null)
+        {
+            await guestSessionService.CreateGroupOwnerSessionAsync(userId, group.GroupReservationId);
             return;
+        }
 
         await CreateGroupReservationAsync(reservationId);
     }
@@ -143,4 +154,3 @@ public class GroupReservationService(
         return new GetGroupInviteTokenResponse(groupReservation.ReservationToken);
     }
 }
-

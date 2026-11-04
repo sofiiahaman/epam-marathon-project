@@ -9,6 +9,7 @@ using APIHandler.Repositories.Tables;
 using APIHandler.Services.Auth;
 using APIHandler.Services.GroupReservations;
 using APIHandler.Services.Locations;
+using APIHandler.Services.GuestSessions;
 using AutoFixture.Xunit2;
 using Moq;
 
@@ -22,6 +23,7 @@ public class GroupReservationServiceTests
     private readonly Mock<IGuestSessionRepository> _guestSessionRepositoryMock = new();
     private readonly Mock<IUserService> _userServiceMock = new();
     private readonly Mock<ILocationService> _locationServiceMock = new();
+    private readonly Mock<IGuestSessionService> _guestSessionServiceMock = new();
 
     private readonly GroupReservationService _service;
 
@@ -32,6 +34,7 @@ public class GroupReservationServiceTests
             _tableRepositoryMock.Object,
             _reservationRepositoryMock.Object,
             _guestSessionRepositoryMock.Object,
+            _guestSessionServiceMock.Object,
             _userServiceMock.Object,
             _locationServiceMock.Object);
     }
@@ -164,6 +167,50 @@ public class GroupReservationServiceTests
             .ReturnsAsync((GroupReservation?)null);
 
         await _service.CloseGroupReservationAsync(reservationId);
+    }
+
+    [Fact]
+    public async Task CreateGroupReservationAsync_CreatesOwnerSession()
+    {
+        var reservation = new Reservation
+        {
+            Id = "reservation",
+            CustomerId = "owner",
+            TableId = "table",
+            WaiterId = "waiter"
+        };
+        _reservationRepositoryMock
+            .Setup(r => r.GetReservationByIdAsync(reservation.Id))
+            .ReturnsAsync(reservation);
+
+        await _service.CreateGroupReservationAsync(reservation.Id);
+
+        _guestSessionServiceMock.Verify(
+            s => s.CreateGroupOwnerSessionAsync("owner", It.IsAny<string>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateGroupReservationIfDoesNotExistAsync_ExistingGroupEnsuresOwnerSessionWithoutCreatingGroup()
+    {
+        var group = new GroupReservation
+        {
+            GroupReservationId = "group",
+            ReservationId = "reservation",
+            ReservationToken = "token"
+        };
+        _groupReservationRepositoryMock
+            .Setup(r => r.GetByReservationIdAsync(group.ReservationId))
+            .ReturnsAsync(group);
+
+        await _service.CreateGroupReservationIfDoesNotExistAsync("owner", group.ReservationId);
+
+        _guestSessionServiceMock.Verify(
+            s => s.CreateGroupOwnerSessionAsync("owner", group.GroupReservationId),
+            Times.Once);
+        _groupReservationRepositoryMock.Verify(
+            r => r.SaveGroupReservationAsync(It.IsAny<GroupReservation>()),
+            Times.Never);
     }
 
     [Theory]

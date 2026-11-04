@@ -345,6 +345,10 @@ public class GuestSessionService(
 
     public async Task CreateGroupOwnerSessionAsync(string userId, string groupReservationId)
     {
+        var existingSession = await guestSessionRepository.GetOwnerSessionByGroupReservationIdAsync(groupReservationId);
+        if (existingSession is not null)
+            return;
+
         var session = new GuestSession()
         {
             Id = Guid.NewGuid().ToString(),
@@ -356,6 +360,23 @@ public class GuestSessionService(
         };
 
         await guestSessionRepository.SaveAsync(session);
+    }
+
+    public async Task<string> GetOwnerSessionIdAsync(string userId, string reservationId)
+    {
+        var reservation = await reservationRepository.GetReservationByIdAsync(reservationId)
+            ?? throw new ReservationNotFoundException($"Reservation {reservationId} was not found.");
+
+        if (reservation.CustomerId != userId)
+            throw new ActionForbiddenException("Only the reservation owner can perform this action.");
+
+        var group = await groupReservationRepository.GetByReservationIdAsync(reservationId)
+            ?? throw new GroupReservationNotFoundException();
+
+        var ownerSession = await guestSessionRepository.GetOwnerSessionByGroupReservationIdAsync(group.GroupReservationId)
+            ?? throw new GuestSessionNotFoundException("Owner guest session was not found.");
+
+        return ownerSession.Id;
     }
 
     public async Task<GetGuestSessionResponse> GetGuestSessionInfoAsync(string guestSessionId)
@@ -392,6 +413,5 @@ public class GuestSessionService(
     }
 
 }
-
 
 
