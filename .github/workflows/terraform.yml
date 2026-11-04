@@ -13,7 +13,6 @@ on:
       - "infra/terraform/**"
 
 permissions:
-  id-token: write
   contents: read
   pull-requests: write
 
@@ -31,36 +30,49 @@ jobs:
     concurrency:
       group: terraform-plan-${{ github.event.pull_request.number }}
       cancel-in-progress: true
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
+      - name: Check AWS configuration
+        if: env.AWS_ACCESS_KEY_ID == '' || env.AWS_SECRET_ACCESS_KEY == ''
+        run: echo "::warning::Terraform plan skipped because AWS access key secrets are not configured."
+
+      - name: Configure AWS Credentials
+        if: env.AWS_ACCESS_KEY_ID != '' && env.AWS_SECRET_ACCESS_KEY != ''
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_TERRAFORM_ROLE }}
-          aws-region: ${{ env.AWS_REGION }}
-          role-session-name: tf-plan-${{ github.run_id }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-north-1
 
       - name: Setup Terraform
+        if: env.AWS_ACCESS_KEY_ID != '' && env.AWS_SECRET_ACCESS_KEY != ''
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TF_VERSION }}
 
       - name: Terraform fmt check
+        if: env.AWS_ACCESS_KEY_ID != '' && env.AWS_SECRET_ACCESS_KEY != ''
         working-directory: ${{ env.TF_DIR }}
         run: terraform fmt -check -recursive
 
       - name: Terraform init
+        if: env.AWS_ACCESS_KEY_ID != '' && env.AWS_SECRET_ACCESS_KEY != ''
         working-directory: ${{ env.TF_DIR }}
         run: terraform init -input=false
 
       - name: Terraform validate
+        if: env.AWS_ACCESS_KEY_ID != '' && env.AWS_SECRET_ACCESS_KEY != ''
         working-directory: ${{ env.TF_DIR }}
         run: terraform validate
 
       - name: Terraform plan
+        if: env.AWS_ACCESS_KEY_ID != '' && env.AWS_SECRET_ACCESS_KEY != ''
         id: plan
         working-directory: ${{ env.TF_DIR }}
         run: |
@@ -70,6 +82,7 @@ jobs:
         continue-on-error: true
 
       - name: Prepare comment body
+        if: env.AWS_ACCESS_KEY_ID != '' && env.AWS_SECRET_ACCESS_KEY != ''
         working-directory: ${{ env.TF_DIR }}
         run: |
           grep -v 'Refreshing state\.\.\.' plan_output.txt > plan_filtered.txt
@@ -90,6 +103,7 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - name: Comment plan on PR
+        if: env.AWS_ACCESS_KEY_ID != '' && env.AWS_SECRET_ACCESS_KEY != ''
         uses: actions/github-script@v7
         with:
           script: |
@@ -118,7 +132,7 @@ jobs:
             }
 
       - name: Fail if plan failed
-        if: steps.plan.outputs.exitcode != '0'
+        if: env.AWS_ACCESS_KEY_ID != '' && env.AWS_SECRET_ACCESS_KEY != '' && steps.plan.outputs.exitcode != '0'
         run: exit 1
 
   apply:
@@ -128,35 +142,48 @@ jobs:
     concurrency:
       group: terraform-apply
       cancel-in-progress: false
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
+      - name: Check AWS configuration
+        if: env.AWS_ACCESS_KEY_ID == '' || env.AWS_SECRET_ACCESS_KEY == ''
+        run: echo "::warning::Terraform apply skipped because AWS access key secrets are not configured."
+
+      - name: Configure AWS Credentials
+        if: env.AWS_ACCESS_KEY_ID != '' && env.AWS_SECRET_ACCESS_KEY != ''
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_TERRAFORM_ROLE }}
-          aws-region: ${{ env.AWS_REGION }}
-          role-session-name: tf-apply-${{ github.run_id }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-north-1
 
       - name: Setup Terraform
+        if: env.AWS_ACCESS_KEY_ID != '' && env.AWS_SECRET_ACCESS_KEY != ''
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TF_VERSION }}
 
       - name: Terraform init
+        if: env.AWS_ACCESS_KEY_ID != '' && env.AWS_SECRET_ACCESS_KEY != ''
         working-directory: ${{ env.TF_DIR }}
         run: terraform init -input=false
 
       - name: Terraform fmt check
+        if: env.AWS_ACCESS_KEY_ID != '' && env.AWS_SECRET_ACCESS_KEY != ''
         working-directory: ${{ env.TF_DIR }}
         run: terraform fmt -check -recursive
 
       - name: Terraform validate
+        if: env.AWS_ACCESS_KEY_ID != '' && env.AWS_SECRET_ACCESS_KEY != ''
         working-directory: ${{ env.TF_DIR }}
         run: terraform validate
 
       - name: Terraform apply
+        if: env.AWS_ACCESS_KEY_ID != '' && env.AWS_SECRET_ACCESS_KEY != ''
         working-directory: ${{ env.TF_DIR }}
         run: terraform apply -input=false -auto-approve
