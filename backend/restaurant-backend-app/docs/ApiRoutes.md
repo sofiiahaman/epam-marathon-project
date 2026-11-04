@@ -554,15 +554,6 @@ Response: `200 OK`
 }
 ```
 
-### `GET` /reservations/{reservationId}/guest-session-id
-Response: `200 OK`
-```json
-{
-  "guestSessionId": "string"
-}
-```
-
-
 ### `DELETE` /reservations
 Request body:
 ```json
@@ -1242,6 +1233,12 @@ group reservation, or owner session does not exist.
 Response: 200 OK
 ```json
 {
-  "message": "Guest session removed from group successfully."
+  "participants": [],
+  "total": 0
 }
 ```
+The response is the updated group snapshot. Only the reservation owner may
+delete a guest session. Missing sessions return `404`, sessions belonging to
+another group return `400`, and non-owners return `403`. The owner session
+cannot be deleted and returns `400`. Removing the last guest returns an empty
+`participants` array and `total: 0`.

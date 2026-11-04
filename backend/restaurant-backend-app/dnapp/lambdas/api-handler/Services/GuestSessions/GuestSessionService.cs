@@ -184,6 +184,11 @@ public class GuestSessionService(
             throw new ValidationException("Guest session does not belong to this group reservation.");
         }
 
+        if (session.IsOwnerSession)
+        {
+            throw new ValidationException("The owner guest session cannot be deleted.");
+        }
+
         await guestSessionRepository.DeleteAsync(session);
 
         var sessions = await guestSessionRepository.GetAllByGroupReservationIdAsync(groupReservationId);
@@ -209,7 +214,10 @@ public class GuestSessionService(
             .Distinct()
             .ToArray();
 
-        var dishesById = (await dishRepository.GetDishesByIdsAsync(dishIds)).ToDictionary(d => d.Id);
+        IEnumerable<Dish> dishes = dishIds.Length == 0
+            ? []
+            : await dishRepository.GetDishesByIdsAsync(dishIds);
+        var dishesById = dishes.ToDictionary(d => d.Id);
         var participants = new List<Participant>();
 
         foreach (var session in sessionList)
@@ -413,5 +421,4 @@ public class GuestSessionService(
     }
 
 }
-
 
