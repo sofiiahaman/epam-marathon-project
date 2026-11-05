@@ -54,6 +54,13 @@ public sealed class SetUpGroupPreorder(bool withGuest, bool withDish = true) : I
             throw new InvalidOperationException($"Creating guest session failed: {await guestResponse.ReadErrorMessageAsync()}");
 
         var guest = await guestResponse.ReadAsAsync<CreateGuestSessionResponse>();
+        actor.Remember(guest);
+        actor.Recall<CleanupScope>().TrackGuestSession(
+            reservation.GroupReservationId,
+            guest.SessionId,
+            new GroupsApi(api),
+            token);
+
         if (!withDish)
             return;
 
@@ -73,12 +80,6 @@ public sealed class SetUpGroupPreorder(bool withGuest, bool withDish = true) : I
         if (!addDish.Ok)
             throw new InvalidOperationException($"Adding guest dish failed: {await addDish.ReadErrorMessageAsync()}");
 
-        actor.Remember(guest);
         actor.Remember(dish);
-        actor.Recall<CleanupScope>().TrackGuestSession(
-            reservation.GroupReservationId,
-            guest.SessionId,
-            new GroupsApi(api),
-            token);
     }
 }

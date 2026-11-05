@@ -1,6 +1,7 @@
 using Restaurant_Aqa_Framework.Api.Dtos.Groups;
 using Restaurant_Aqa_Framework.Api.Dtos.Auth;
 using Restaurant_Aqa_Framework.Api.Dtos.Reservations;
+using Restaurant_Aqa_Framework.Api.Dtos.Orders;
 using Restaurant_Aqa_Framework.Configuration;
 using Restaurant_Aqa_Framework.Screenplay;
 using Restaurant_Aqa_Framework.Screenplay.Questions;
@@ -45,6 +46,124 @@ public sealed class GroupPreorderStepDefinitions(Actor actor) : StepDefinitionBa
         var credentials = Recall<RegisterRequest>();
         await Actor.AttemptsToAsync(new SignInThroughTheLoginForm(credentials.Email, credentials.Password));
         await Actor.AttemptsToAsync(new OpenGroupPreorder());
+    }
+
+    [Given("the owner has submitted guest baskets for the group")]
+    [Scope(Tag = "api")]
+    public Task OwnerHasSubmittedGuestBaskets() =>
+        Actor.AttemptsToAsync(new SetUpSubmittedGroupPreorder());
+
+    [Given("the owner has submitted guest baskets for the group")]
+    [Scope(Tag = "ui")]
+    public async Task OwnerHasSubmittedGuestBasketsForUi()
+    {
+        await Actor.AttemptsToAsync(new SetUpSubmittedGroupPreorder());
+        var credentials = Recall<RegisterRequest>();
+        await Actor.AttemptsToAsync(new SignInThroughTheLoginForm(credentials.Email, credentials.Password));
+    }
+
+    [Given("the owner has two submitted guests with the same dish")]
+    public Task OwnerHasTwoSubmittedGuestsWithTheSameDish() =>
+        Actor.AttemptsToAsync(new SetUpSubmittedGroupPreorder(guestCount: 2));
+
+    [Given("the group has no submitted baskets")]
+    public Task GroupHasNoSubmittedBaskets() =>
+        Actor.AttemptsToAsync(new SetUpSubmittedGroupPreorder(submitGuest: false));
+
+    [Given("the submitted baskets contain no dishes")]
+    public Task SubmittedBasketsContainNoDishes() =>
+        Actor.AttemptsToAsync(new SetUpSubmittedGroupPreorder(addDish: false));
+
+    [When("the owner submits the group pre-order")]
+    [Scope(Tag = "ui")]
+    public Task OwnerSubmitsGroupPreorder() =>
+        new GroupPreorderPage(Actor.LookingAtThePage()).SubmitAsync();
+
+    [When("the owner submits the group pre-order through the API")]
+    [Scope(Tag = "api")]
+    public Task OwnerSubmitsGroupPreorderThroughApi() =>
+        Actor.AttemptsToAsync(new SubmitGroupPreorder());
+
+    [When("the group is submitted again")]
+    [Scope(Tag = "api")]
+    public Task GroupIsSubmittedAgain() =>
+        Actor.AttemptsToAsync(new SubmitGroupPreorder());
+
+    [When("the {caller} submits the group pre-order")]
+    [Scope(Tag = "api")]
+    public Task CallerSubmitsGroupPreorder(string caller) =>
+        Actor.AttemptsToAsync(new SubmitGroupAsCaller(caller));
+
+    [When("the owner submits after the order was removed")]
+    [Scope(Tag = "api")]
+    public async Task OwnerSubmitsAfterOrderWasRemoved()
+    {
+        await Actor.AttemptsToAsync(new DeleteGroupOrder());
+        await Actor.AttemptsToAsync(new SubmitGroupPreorder());
+    }
+
+    [When("the group submit request uses a missing group")]
+    [Scope(Tag = "api")]
+    public Task GroupSubmitUsesMissingGroup() =>
+        Actor.AttemptsToAsync(new SubmitGroupWithIds(
+            "00000000-0000-0000-0000-000000000000",
+            Recall<ReservationResponse>().Id,
+            Recall<string>("group-owner-token")));
+
+    [When("the group submit request uses a missing reservation")]
+    [Scope(Tag = "api")]
+    public Task GroupSubmitUsesMissingReservation() =>
+        Actor.AttemptsToAsync(new SubmitGroupWithIds(
+            Recall<ReservationResponse>().GroupReservationId!,
+            "00000000-0000-0000-0000-000000000000",
+            Recall<string>("group-owner-token")));
+
+    [Then("the owner sees submitted group items")]
+    [Scope(Tag = "ui")]
+    public async Task OwnerSeesSubmittedGroupItems() =>
+        await Assert.That(await new GroupPreorderPage(Actor.LookingAtThePage()).SubmittedItems.CountAsync())
+            .IsGreaterThan(0);
+
+    [Then("the group submit response contains {string}")]
+    [Scope(Tag = "api")]
+    public async Task GroupSubmitResponseContains(string text)
+    {
+        var outcome = await Actor.AsksForAsync(new TheOutcome());
+        await Assert.That(outcome.Body).Contains(text);
+    }
+
+    [Then("the group submit response has status {int}")]
+    [Scope(Tag = "api")]
+    public async Task GroupSubmitResponseHasStatus(int status)
+    {
+        var outcome = await Actor.AsksForAsync(new TheOutcome());
+        await Assert.That(outcome.Status).IsEqualTo(status)
+            .Because($"response body was: {outcome.Body}");
+    }
+
+    [Then("the submitted dish quantity is {int}")]
+    [Scope(Tag = "api")]
+    public async Task SubmittedDishQuantityIs(int quantity)
+    {
+        var dish = Recall<Api.Dtos.Dishes.DishListResponse>();
+        await Assert.That(await Actor.AsksForAsync(new TheGroupSubmitContains(dish.Id, quantity))).IsTrue();
+    }
+
+    [Then("the waiter order contains the submitted group dishes")]
+    [Scope(Tag = "api")]
+    public async Task WaiterOrderContainsSubmittedGroupDishes()
+    {
+        await Actor.AttemptsToAsync(new ReadWaiterGroupOrder());
+        var order = Recall<GetOrderResponse>();
+        var submittedItems = Recall<IReadOnlyList<GroupSubmitItem>>();
+        await Assert.That(order.Status).IsEqualTo(OrderStatus.SubmittedByCustomer);
+        await Assert.That(order.OrderItems.Count).IsEqualTo(submittedItems.Count);
+        foreach (var submittedItem in submittedItems)
+        {
+            var orderItem = order.OrderItems.FirstOrDefault(item => item.Dish.Id == submittedItem.DishId);
+            await Assert.That(orderItem).IsNotNull();
+            await Assert.That(orderItem!.Quantity).IsEqualTo(submittedItem.Quantity);
+        }
     }
 
     [When("the owner refreshes the group participants")]

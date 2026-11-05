@@ -9,9 +9,16 @@ public sealed class GroupPreorderPage(IPage page) : BasePage(page)
     public ILocator EmptyState => Root.Locator(".group-preorder__message");
     public ILocator Total => Root.Locator(".group-preorder__summary");
     public ILocator Error => Root.Locator("[role='alert']");
+    public ILocator SubmittedItems => Root.Locator(".confirmation--success li");
 
     public Task RefreshAsync() =>
         Root.GetByRole(AriaRole.Button, new() { Name = "Оновити" }).ClickAsync();
+
+    public async Task SubmitAsync()
+    {
+        await Root.GetByRole(AriaRole.Button, new() { Name = "Підтвердити груповий pre-order" }).ClickAsync();
+        await Root.GetByRole(AriaRole.Button, new() { Name = "Підтвердити", Exact = true }).ClickAsync();
+    }
 
     public Task OpenAsync() =>
         Page.Locator("button").Filter(new() { HasText = "Group pre-order" }).First.ClickAsync();
