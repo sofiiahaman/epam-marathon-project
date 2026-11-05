@@ -25,6 +25,7 @@ export interface Participant {
 export interface ParticipantsSnapshot {
   participants: Participant[];
   total: number;
+  status?: string;
 }
 
 /** One line of the consolidated order: the same dish from all submitted sessions merged by `dishId`. */

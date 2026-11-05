@@ -17,18 +17,50 @@
     </button>
   </div>
 
-  @if (isLoading()) {
-    <p class="group-preorder__message" role="status">Завантаження учасників…</p>
-  } @else if (error(); as message) {
+  <div class="group-preorder__actions">
+    <button
+      type="button"
+      class="button button--primary"
+      [disabled]="!canSubmit()"
+      (click)="openSubmitConfirmation()"
+    >
+      {{ groupStatus() === 'Submitted' || snapshot().status === 'Submitted' ? 'Груповий pre-order підтверджено' : 'Підтвердити груповий pre-order' }}
+    </button>
+    <button
+      type="button"
+      class="button button--secondary"
+      [disabled]="!ownerSessionAvailable()"
+      (click)="openOwnerMenu()"
+    >
+      Додати власні страви
+    </button>
+  </div>
+
+  @if (ownerSessionError(); as ownerError) {
+    <p class="group-preorder__message group-preorder__message--error" role="alert">
+      {{ ownerError }}
+    </p>
+  }
+
+  @if (submitError(); as message) {
     <p class="group-preorder__message group-preorder__message--error" role="alert">
       {{ message }}
     </p>
-  } @else if (isEmpty()) {
-    <p class="group-preorder__message">
-      Поки що ніхто не приєднався до групового pre-order.
-    </p>
+  }
+
+  @if (isLoading()) {
+    <p class="group-preorder__message" role="status">Завантаження учасників…</p>
   } @else {
-    <div class="participants" role="list">
+    @if (error(); as message) {
+      <p class="group-preorder__message group-preorder__message--error" role="alert">
+        {{ message }}
+      </p>
+    } @else if (isEmpty()) {
+      <p class="group-preorder__message">
+        Поки що ніхто не приєднався до групового pre-order.
+      </p>
+    } @else {
+      <div class="participants" role="list">
       @for (participant of participants(); track participantTrack($index, participant)) {
         <article class="participant" role="listitem">
           <div class="participant__header">
@@ -42,6 +74,15 @@
             >
               {{ participant.isSubmitted ? 'Підтверджено' : 'Ще не підтверджено' }}
             </span>
+            @if (participant.type === 'Guest') {
+              <button
+                type="button"
+                class="button button--tertiary button--small"
+                (click)="confirmDelete(participant.id!)"
+              >
+                Видалити
+              </button>
+            }
           </div>
 
           @if (participant.items.length > 0) {
@@ -62,6 +103,37 @@
           </p>
         </article>
       }
+      </div>
+    }
+  }
+
+  @if (confirmDeleteId(); as sessionId) {
+    <div class="confirmation" role="dialog" aria-modal="true">
+      <p>Видалити цього учасника з групового pre-order?</p>
+      <button type="button" class="button button--tertiary" (click)="cancelDelete()">Скасувати</button>
+      <button type="button" class="button button--primary" (click)="deleteConfirmed()">Видалити</button>
+    </div>
+  }
+
+  @if (confirmSubmit()) {
+    <div class="confirmation" role="dialog" aria-modal="true">
+      <p>Підтвердити груповий pre-order?</p>
+      <button type="button" class="button button--tertiary" (click)="cancelSubmit()">Скасувати</button>
+      <button type="button" class="button button--primary" [disabled]="submitting()" (click)="submitConfirmed()">
+        {{ submitting() ? 'Підтвердження…' : 'Підтвердити' }}
+      </button>
+    </div>
+  }
+
+  @if (submittedItems(); as items) {
+    <div class="confirmation confirmation--success" role="status">
+      <h3>Груповий pre-order підтверджено</h3>
+      <ul>
+        @for (item of items; track item.dishId) {
+          <li>{{ item.dishId }} × {{ item.quantity }}</li>
+        }
+      </ul>
+      <button type="button" class="button button--primary" (click)="submittedItems.set(null)">Закрити</button>
     </div>
   }
 </section>
