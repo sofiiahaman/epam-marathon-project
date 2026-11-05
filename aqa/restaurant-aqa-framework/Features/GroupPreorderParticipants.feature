@@ -45,5 +45,5 @@ Feature: Group pre-order participants
 
     @api
     Scenario: A missing group returns not found
-      When an anonymous user requests a missing group
+      When an authorized owner requests a missing group
       Then the group request is refused with status 404
