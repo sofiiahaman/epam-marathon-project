@@ -105,7 +105,7 @@ jobs:
             value="${!provided:-}"
             if [ -z "$value" ]; then value="${dotenv[$name]:-}"; fi
             if [ "$name" = "API_URL" ] && [ -z "$value" ]; then
-              value="https://eknqcvq3l1.execute-api.eu-north-1.amazonaws.com/develop"
+              value="https://uwqq8dm70d.execute-api.eu-north-1.amazonaws.com/develop"
               echo "API_URL: using the shared develop deployment"
             fi
             if [ -z "$value" ]; then echo "$name: not set"; continue; fi
