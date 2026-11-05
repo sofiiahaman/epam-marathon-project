@@ -44,7 +44,7 @@ export class GroupPreorderParticipantsComponent {
   private readonly loading = signal(true);
   private readonly errorMessage = signal<string | null>(null);
   private readonly ownerSessionId = signal<string | null>(null);
-  private readonly ownerSessionError = signal<string | null>(null);
+  readonly ownerSessionError = signal<string | null>(null);
   readonly submitting = signal(false);
   readonly submitError = signal<string | null>(null);
   readonly submittedItems = signal<{ dishId: string; quantity: number }[] | null>(null);

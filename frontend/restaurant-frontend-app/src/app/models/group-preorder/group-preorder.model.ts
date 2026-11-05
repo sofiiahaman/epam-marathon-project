@@ -1,4 +1,5 @@
 export type ParticipantType = 'Owner' | 'Guest';
+export type GroupReservationStatus = 'Open' | 'Submitted' | 'Closed';
 
 export interface ParticipantDish {
   id: string;

@@ -1,4 +1,5 @@
 using APIHandler.Constants;
+using APIHandler.Entities;
 using System;
 using System.Text.Json.Serialization;
 
@@ -41,4 +42,11 @@ public class ReservationResponse
 
     [JsonPropertyName("guestInviteLinkAvailable")]
     public bool GuestInviteLinkAvailable { get; set; }
+
+    [JsonPropertyName("groupReservationId")]
+    public string? GroupReservationId { get; set; }
+
+    [JsonPropertyName("groupReservationStatus")]
+    [JsonConverter(typeof(JsonStringEnumConverter<GroupReservationStatus>))]
+    public GroupReservationStatus? GroupReservationStatus { get; set; }
 }

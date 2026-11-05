@@ -2,6 +2,7 @@
 using Amazon.Lambda.Core;
 using APIHandler.Helpers;
 using APIHandler.Mappers;
+using APIHandler.Repositories.GroupReservations;
 using APIHandler.Services.Locations;
 using APIHandler.Services.Orders;
 using APIHandler.Services.Reservations;
@@ -15,12 +16,14 @@ public class GetReservationByIdHandler : IApiRequestHandler
     private readonly IReservationService _reservationService;
     private readonly ILocationService _locationService;
     private readonly IOrderService _orderService;
+    private readonly IGroupReservationRepository _groupReservationRepository;
 
-    public GetReservationByIdHandler(IOrderService orderService, ILocationService locationService, IReservationService reservationService)
+    public GetReservationByIdHandler(IOrderService orderService, ILocationService locationService, IReservationService reservationService, IGroupReservationRepository groupReservationRepository)
     {
         _orderService = orderService ?? throw new ArgumentNullException(nameof(orderService));
         _locationService = locationService ?? throw new ArgumentNullException(nameof(locationService));
         _reservationService = reservationService ?? throw new ArgumentNullException(nameof(reservationService));
+        _groupReservationRepository = groupReservationRepository ?? throw new ArgumentNullException(nameof(groupReservationRepository));
     }
 
     public async Task<APIGatewayProxyResponse> HandleRequest(APIGatewayProxyRequest request, ILambdaContext context)
@@ -53,8 +56,9 @@ public class GetReservationByIdHandler : IApiRequestHandler
         }
 
         var order = await _orderService.GetOrderByReservationIdAsync(reservation.Id);
+        var groupReservation = await _groupReservationRepository.GetByReservationIdAsync(reservation.Id);
 
-        var reservationResponse = ReservationMapper.ToReservationResponse(reservation, location.Address, order);
+        var reservationResponse = ReservationMapper.ToReservationResponse(reservation, location.Address, order, groupReservation: groupReservation);
         return ResponseBuilder.CreateSuccessResponse(reservationResponse);
     }
 }

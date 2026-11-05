@@ -22,8 +22,10 @@
         (editReservation)="openEditModal($event)"
         (leaveFeedbackReservation)="openFeedback($event)"
         (updateFeedbackReservation)="openFeedback($event)"
+        (groupPreorder)="openGroupPreorder($event)"
       />
     }
+
   </ul>
 } @else {
   <div class="reservation-empty">
@@ -42,6 +44,15 @@
       Book a table
     </a>
   </div>
+}
+
+@if (showGroupPreorder() && groupPreorderReservation(); as reservation) {
+  <app-group-preorder-participants
+    [groupReservationId]="reservation.groupReservationId!"
+    [reservationId]="reservation.id"
+    [groupStatus]="reservation.groupReservationStatus ?? 'Open'"
+    (addOwnerDishes)="openOwnerGroupMenu($event)"
+  />
 }
 
 @if (
