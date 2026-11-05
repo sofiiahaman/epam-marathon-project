@@ -10,6 +10,7 @@ public sealed class GroupPreorderPage(IPage page) : BasePage(page)
     public ILocator Total => Root.Locator(".group-preorder__summary");
     public ILocator Error => Root.Locator("[role='alert']");
     public ILocator SubmittedItems => Root.Locator(".confirmation--success li");
+    public ILocator DeleteButtons => Root.GetByRole(AriaRole.Button, new() { Name = "Видалити", Exact = true });
 
     public Task RefreshAsync() =>
         Root.GetByRole(AriaRole.Button, new() { Name = "Оновити" }).ClickAsync();

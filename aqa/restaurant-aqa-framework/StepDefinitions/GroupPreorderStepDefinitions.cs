@@ -164,6 +164,87 @@ public sealed class GroupPreorderStepDefinitions(Actor actor) : StepDefinitionBa
             await Assert.That(orderItem).IsNotNull();
             await Assert.That(orderItem!.Quantity).IsEqualTo(submittedItem.Quantity);
         }
+
+    }
+
+    [Given("the owner has several removable guests")]
+    [Given("the owner has several submitted removable guests")]
+    [Scope(Tag = "api")]
+    public Task OwnerHasSeveralRemovableGuests() =>
+        Actor.AttemptsToAsync(new SetUpRemovableGroup(guestCount: 2, submitGuests: true));
+
+    [Given("the owner has several submitted removable guests")]
+    [Scope(Tag = "ui")]
+    public async Task OwnerHasSeveralSubmittedRemovableGuestsForUi()
+    {
+        await Actor.AttemptsToAsync(new SetUpRemovableGroup(guestCount: 2, submitGuests: true));
+        var credentials = Recall<RegisterRequest>();
+        await Actor.AttemptsToAsync(new SignInThroughTheLoginForm(credentials.Email, credentials.Password));
+    }
+
+    [Given("the owner has one removable guest")]
+    public Task OwnerHasOneRemovableGuest() =>
+        Actor.AttemptsToAsync(new SetUpRemovableGroup(guestCount: 1));
+
+    [Given("the owner has two independent groups")]
+    public Task OwnerHasTwoIndependentGroups() =>
+        Actor.AttemptsToAsync(new SetUpIndependentGroups());
+
+    [When("the owner deletes the first guest")]
+    [When("the owner deletes the first submitted guest")]
+    public Task OwnerDeletesFirstGuest() =>
+        Actor.AttemptsToAsync(new DeleteGuestParticipant(
+            guestSessionId: Actor.Recall<CreateGuestSessionResponse>("guest-1").SessionId));
+
+    [When("the owner deletes the only guest")]
+    public Task OwnerDeletesOnlyGuest() =>
+        Actor.AttemptsToAsync(new DeleteGuestParticipant(
+            guestSessionId: Actor.Recall<CreateGuestSessionResponse>("guest-1").SessionId));
+
+    [When("the owner deletes the first group's guest from the second group")]
+    public Task OwnerDeletesGuestFromWrongGroup() =>
+        Actor.AttemptsToAsync(new DeleteNamedGuestParticipant(
+            "first-group-reservation",
+            "second-group-guest",
+            "first-group-owner-token"));
+
+    [When("the owner deletes a missing guest")]
+    public Task OwnerDeletesMissingGuest() =>
+        Actor.AttemptsToAsync(new DeleteGuestParticipant(guestSessionId: MissingGroupId));
+
+    [When("another customer deletes the guest session")]
+    public Task AnotherCustomerDeletesGuestSession() =>
+        Actor.AttemptsToAsync(new DeleteAsAnotherCustomer());
+
+    [When("the owner submits the remaining group order")]
+    public Task OwnerSubmitsRemainingGroupOrder() =>
+        Actor.AttemptsToAsync(new SubmitGroupPreorder());
+
+    [Then("the delete response has status {int}")]
+    public async Task DeleteResponseHasStatus(int status)
+    {
+        var outcome = await Actor.AsksForAsync(new TheOutcome());
+        await Assert.That(outcome.Status).IsEqualTo(status)
+            .Because($"response body was: {outcome.Body}");
+    }
+
+    [Then("the remaining participant count is {int}")]
+    public async Task RemainingParticipantCountIs(int count) =>
+        await Assert.That(Recall<GroupParticipantsResponse>().Participants.Count).IsEqualTo(count);
+
+    [Then("the participant total is recalculated")]
+    public async Task ParticipantTotalIsRecalculated()
+    {
+        var snapshot = Recall<GroupParticipantsResponse>();
+        await Assert.That(snapshot.Total).IsGreaterThan(0);
+    }
+
+    [Then("the remaining order excludes the deleted guest")]
+    public async Task RemainingOrderExcludesDeletedGuest()
+    {
+        await Actor.AttemptsToAsync(new ReadWaiterGroupOrder());
+        var order = Recall<GetOrderResponse>();
+        await Assert.That(order.OrderItems.Count).IsGreaterThan(0);
     }
 
     [When("the owner refreshes the group participants")]
