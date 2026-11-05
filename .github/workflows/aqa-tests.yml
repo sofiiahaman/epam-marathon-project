@@ -196,15 +196,21 @@ jobs:
             echo "Demo location already exists: $location_id."
           fi
 
-          tables="$(json_response GET "$API_URL/locations/$location_id/tables/all")"
+          tables="$(curl --silent --show-error --request GET \
+            --header "Authorization: Bearer $TOKEN" \
+            --header "Content-Type: application/json" \
+            "$API_URL/locations/$location_id/tables/all" || echo '[]')"
+          tables="$(jq -c 'if type == "array" then . else [] end' <<< "$tables")"
           table_id="$(jq -r '[.[] | select(.capacity >= 3) | .id][0] // empty' <<< "$tables")"
 
           if [[ -z "$table_id" ]]; then
+            table_suffix="$((1000 + RANDOM % 8000))"
             for table in 2 4 8; do
               table_payload="$(jq -cn --arg location_id "$location_id" --argjson capacity "$table" \
-                '{locationId: $location_id, capacity: $capacity, tableNumber: $capacity + 100}')"
+                --argjson table_number "$((table_suffix + table))" \
+                '{locationId: $location_id, capacity: $capacity, tableNumber: $table_number}')"
               created_table="$(json_response POST "$API_URL/tables" "$table_payload")"
-              if [[ "$table" == "8" ]]; then
+              if [[ "$table" == "4" ]]; then
                 table_id="$(jq -er '.id' <<< "$created_table")"
               fi
             done
