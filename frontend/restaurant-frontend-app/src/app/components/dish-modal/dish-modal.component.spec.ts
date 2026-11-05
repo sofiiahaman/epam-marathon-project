@@ -9,7 +9,9 @@ describe('DishModalComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [DishModalComponent],
-    }).compileComponents();
+    })
+      .overrideComponent(DishModalComponent, { set: { template: '' } })
+      .compileComponents();
 
     fixture = TestBed.createComponent(DishModalComponent);
     component = fixture.componentInstance;

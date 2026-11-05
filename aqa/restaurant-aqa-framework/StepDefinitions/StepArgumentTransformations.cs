@@ -75,6 +75,9 @@ public static class StepArgumentTransformations
     [StepArgumentTransformation(Name = "information", Regex = "(dish catalog|popular dishes|list of locations)")]
     public static string ToInformation(string value) => value;
 
+    [StepArgumentTransformation(Name = "caller", Regex = "(another client|a guest|a waiter|an anonymous user)")]
+    public static string ToCaller(string value) => value;
+
     [StepArgumentTransformation]
     public static Fields ToFields(DataTable table) => Fields.From(table);
 }

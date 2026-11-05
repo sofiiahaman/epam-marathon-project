@@ -63,10 +63,11 @@ public sealed record Settings(
     private static Settings Load()
     {
         EnvConfig.EnsureLoaded();
+        var apiBaseUrl = RequireString("API_URL");
 
         return new Settings(
-            UiBaseUrl: RequireString("UI_URL"),
-            ApiBaseUrl: RequireString("API_URL"),
+            UiBaseUrl: ReadOptionalString("UI_URL") ?? apiBaseUrl,
+            ApiBaseUrl: apiBaseUrl,
             Browser: ParseEnum("BROWSER", BrowserKind.Chromium),
             Headless: ReadBool("HEADLESS", true),
             DefaultTimeoutMs: ReadInt("DEFAULT_TIMEOUT_MS", 15_000),

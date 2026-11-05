@@ -2,6 +2,8 @@ using Restaurant_Aqa_Framework.Api.Dtos.Groups;
 using Restaurant_Aqa_Framework.Api.Dtos.Auth;
 using Restaurant_Aqa_Framework.Api.Dtos.Reservations;
 using Restaurant_Aqa_Framework.Api.Dtos.Orders;
+using Restaurant_Aqa_Framework.Api;
+using Restaurant_Aqa_Framework.Api.Seeding;
 using Restaurant_Aqa_Framework.Configuration;
 using Restaurant_Aqa_Framework.Screenplay;
 using Restaurant_Aqa_Framework.Screenplay.Questions;
@@ -292,19 +294,56 @@ public sealed class GroupPreorderStepDefinitions(Actor actor) : StepDefinitionBa
 
     [When("the {caller} requests the group participants")]
     [Scope(Tag = "api")]
-    public Task CallerRequestsGroupParticipants(string caller)
+    public async Task CallerRequestsGroupParticipants(string caller)
     {
-        var token = caller switch
+        string? token;
+        switch (caller)
         {
-            "anonymous user" or "guest" => null,
-            _ => "invalid-caller-token",
-        };
+            case "anonymous user":
+                token = null;
+                break;
+            case "guest":
+                await Actor.AttemptsToAsync(new SetUpGroupPreorder(withGuest: true, withDish: false));
+                token = Recall<CreateGuestSessionResponse>().SessionToken;
+                break;
+            case "waiter":
+                token = await new AuthApi(Actor.UsingTheApi()).SignInAsWaiterAsync();
+                break;
+            case "another client":
+                token = await SignInAnotherCustomerAsync();
+                break;
+            default:
+                throw new InvalidOperationException($"Unsupported caller '{caller}'.");
+        }
 
-        return Actor.AttemptsToAsync(new GetGroupSessions(MissingGroupId, token));
+        await Actor.AttemptsToAsync(new GetGroupSessions(MissingGroupId, token));
     }
 
-    [When("an anonymous user requests a missing group")]
+    [When("an authorized owner requests a missing group")]
     [Scope(Tag = "api")]
-    public Task AnonymousUserRequestsMissingGroup() =>
-        Actor.AttemptsToAsync(new GetGroupSessions(MissingGroupId));
+    public async Task AnonymousUserRequestsMissingGroup()
+    {
+        await Actor.AttemptsToAsync(new SetUpGroupPreorder(withGuest: false));
+        await Actor.AttemptsToAsync(new GetGroupSessions(
+            MissingGroupId,
+            Recall<string>("group-owner-token")));
+    }
+
+    private async Task<string> SignInAnotherCustomerAsync()
+    {
+        var auth = new AuthApi(Actor.UsingTheApi());
+        var credentials = SampleDataFactory.RegisterRequest();
+        var registration = await auth.RegisterAsync(credentials);
+        if (!registration.Ok)
+            throw new InvalidOperationException(
+                $"Registering second customer failed: {await registration.ReadErrorMessageAsync()}");
+
+        var signIn = await auth.SignInAsync(
+            new SignInRequest(credentials.Email, credentials.Password));
+        if (!signIn.Ok)
+            throw new InvalidOperationException(
+                $"Signing in second customer failed: {await signIn.ReadErrorMessageAsync()}");
+
+        return (await signIn.ReadAsAsync<SignInResponse>()).IdToken;
+    }
 }

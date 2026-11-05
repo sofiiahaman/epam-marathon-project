@@ -9,7 +9,9 @@ describe('DishSelectCardComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [DishSelectCardComponent],
-    }).compileComponents();
+    })
+      .overrideComponent(DishSelectCardComponent, { set: { template: '' } })
+      .compileComponents();
 
     fixture = TestBed.createComponent(DishSelectCardComponent);
     component = fixture.componentInstance;
