@@ -3,6 +3,7 @@ using Bogus;
 using Restaurant_Aqa_Framework.Api.Dtos.Auth;
 using Restaurant_Aqa_Framework.Api.Dtos.Dishes;
 using Restaurant_Aqa_Framework.Api.Dtos.Feedback;
+using Restaurant_Aqa_Framework.Api.Dtos.Groups;
 using Restaurant_Aqa_Framework.Api.Dtos.Locations;
 using Restaurant_Aqa_Framework.Api.Dtos.Reservations;
 using Restaurant_Aqa_Framework.Api.Dtos.Tables;
@@ -82,6 +83,26 @@ public static class SampleDataFactory
             StartTime: startTime,
             EndTime: startTime.AddHours(1),
             GuestCount: guestCount);
+
+    public static DateTime ReservationStartTime(int minutesFromNow = 30) =>
+        DateTime.UtcNow.AddMinutes(minutesFromNow);
+
+    public static string GuestName() =>
+        Prefix + "Guest-" + Guid.NewGuid().ToString("N")[..10];
+
+    public static CreateGuestSessionRequest CreateGuestSessionRequest(
+        string groupReservationId,
+        string? guestName = null) =>
+        new(groupReservationId, guestName ?? GuestName());
+
+    public static UpdateGuestSessionDishRequest CreateGuestSessionDishRequest(
+        string dishId,
+        int quantity = 1) =>
+        new(dishId, quantity);
+
+    public static SubmitGroupReservationRequest CreateSubmitGroupReservationRequest(
+        string reservationId) =>
+        new(reservationId);
 
     public static CreateFeedbackRequest CreateFeedbackRequest(
         string reservationId, int rating = 5, FeedbackType type = FeedbackType.Service) =>

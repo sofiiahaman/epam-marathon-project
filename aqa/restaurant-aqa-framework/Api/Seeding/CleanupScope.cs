@@ -31,6 +31,26 @@ public sealed class CleanupScope(Action<string>? log = null) : IAsyncDisposable
         }
     });
 
+    public void TrackReservation(
+        string reservationId,
+        ReservationsApi reservationsApi,
+        string bearerToken) =>
+        TrackDelete(
+            $"reservation '{reservationId}'",
+            () => reservationsApi.CancelReservationAsync(reservationId, bearerToken));
+
+    public void TrackGuestSession(
+        string groupReservationId,
+        string guestSessionId,
+        GroupsApi groupsApi,
+        string ownerBearerToken) =>
+        TrackDelete(
+            $"guest session '{guestSessionId}'",
+            () => groupsApi.DeleteSessionAsync(
+                groupReservationId,
+                guestSessionId,
+                ownerBearerToken));
+
     public async ValueTask DisposeAsync()
     {
         for (var i = _actions.Count - 1; i >= 0; i--)
