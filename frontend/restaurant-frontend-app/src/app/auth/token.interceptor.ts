@@ -11,6 +11,14 @@ import { AuthenticationService } from './services/authentication.service';
 import { SKIP_ERROR_TOAST } from './skip-error-toast.context';
 import { getServerErrorMessage } from '../shared/helpers/http-error-helpers';
 
+// Owner-only endpoints that live under /guest/: list / delete the sessions of a group pre-order.
+// They are called by the signed-in owner (Cognito idToken), not by a guest, so they must NOT take
+// the guest branch below. Every other /guest/ URL keeps the guest session token untouched.
+const OWNER_GROUP_SESSIONS_URL = /\/guest\/groups\/[^/?#]+\/sessions(?:[/?#]|$)/;
+
+const isGuestTokenRequest = (url: string): boolean =>
+  url.includes('/guest/') && !OWNER_GROUP_SESSIONS_URL.test(url);
+
 export const tokenInterceptor: HttpInterceptorFn = (
   req: HttpRequest<unknown>,
   next: HttpHandlerFn
@@ -20,7 +28,8 @@ export const tokenInterceptor: HttpInterceptorFn = (
   // IMPORTANT: do not modify Guest endpoints at all.
   // Guest flow uses a different token (guest session token) and we must not touch the body.
   // Otherwise we break POST /guest/sessions payload.
-  if (req.url.includes('/guest/')) {
+  // (Owner endpoints under /guest/groups/{id}/sessions are the exception, see isGuestTokenRequest.)
+  if (isGuestTokenRequest(req.url)) {
     return next(req).pipe(
       catchError((error: HttpErrorResponse) => {
         console.log(error);
