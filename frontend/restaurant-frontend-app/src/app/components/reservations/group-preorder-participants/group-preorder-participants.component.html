@@ -1,0 +1,67 @@
+<section class="group-preorder" aria-labelledby="group-preorder-title">
+  <div class="group-preorder__header">
+    <div>
+      <h2 id="group-preorder-title">Group pre-order</h2>
+      <p class="group-preorder__summary">
+        Total: <strong>{{ snapshot().total | currency }}</strong>
+      </p>
+    </div>
+
+    <button
+      type="button"
+      class="button button--secondary"
+      [disabled]="isLoading()"
+      (click)="refresh()"
+    >
+      Оновити
+    </button>
+  </div>
+
+  @if (isLoading()) {
+    <p class="group-preorder__message" role="status">Завантаження учасників…</p>
+  } @else if (error(); as message) {
+    <p class="group-preorder__message group-preorder__message--error" role="alert">
+      {{ message }}
+    </p>
+  } @else if (isEmpty()) {
+    <p class="group-preorder__message">
+      Поки що ніхто не приєднався до групового pre-order.
+    </p>
+  } @else {
+    <div class="participants" role="list">
+      @for (participant of participants(); track participantTrack($index, participant)) {
+        <article class="participant" role="listitem">
+          <div class="participant__header">
+            <div>
+              <h3>{{ participant.name }}</h3>
+              <span class="participant__type">{{ participant.type }}</span>
+            </div>
+            <span
+              class="participant__status"
+              [class.participant__status--confirmed]="participant.isSubmitted"
+            >
+              {{ participant.isSubmitted ? 'Підтверджено' : 'Ще не підтверджено' }}
+            </span>
+          </div>
+
+          @if (participant.items.length > 0) {
+            <ul class="participant__items">
+              @for (item of participant.items; track item.dish.id) {
+                <li>
+                  <span>{{ item.dish.name }} × {{ item.quantity }}</span>
+                  <span>{{ item.dish.price * item.quantity | currency }}</span>
+                </li>
+              }
+            </ul>
+          } @else {
+            <p class="participant__empty">Страви ще не вибрано.</p>
+          }
+
+          <p class="participant__total">
+            Сума: <strong>{{ participant.total | currency }}</strong>
+          </p>
+        </article>
+      }
+    </div>
+  }
+</section>
