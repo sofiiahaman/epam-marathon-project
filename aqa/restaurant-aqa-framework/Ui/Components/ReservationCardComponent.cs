@@ -12,10 +12,13 @@ public sealed class ReservationCardComponent(ILocator root)
     public ILocator CancelButton => root.Locator("button.btn-cancel");
     public ILocator EditButton => root.Locator("button.btn-edit.btn-postpone");
     public ILocator PreOrderButton => root.Locator("button.btn-preorder");
+    public ILocator GroupPreorderButton =>
+        root.GetByRole(AriaRole.Button, new() { Name = "Group pre-order", Exact = true });
     public ILocator LeaveFeedbackButton => root.Locator("button.btn-leave-feedback");
     public ILocator UpdateFeedbackButton => root.Locator("button.btn-update-feedback");
 
     public Task CancelAsync() => CancelButton.ClickAsync();
     public Task PreOrderAsync() => PreOrderButton.ClickAsync();
+    public Task OpenGroupPreorderAsync() => GroupPreorderButton.ClickAsync();
     public Task LeaveFeedbackAsync() => LeaveFeedbackButton.ClickAsync();
 }
