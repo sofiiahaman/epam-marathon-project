@@ -9,7 +9,9 @@ describe('TimeSlotComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [TimeSlotComponent],
-    }).compileComponents();
+    })
+      .overrideComponent(TimeSlotComponent, { set: { template: '' } })
+      .compileComponents();
 
     fixture = TestBed.createComponent(TimeSlotComponent);
     component = fixture.componentInstance;

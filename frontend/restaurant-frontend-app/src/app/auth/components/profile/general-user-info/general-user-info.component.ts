@@ -44,6 +44,7 @@ export class GeneralInformationComponent {
   private imageRevision = 0;
   private userRevision = 0;
   private activeReader: FileReader | null = null;
+  private activeImage: HTMLImageElement | null = null;
 
   readonly userForm = this.formBuilder.nonNullable.group({
     firstName: [
@@ -114,6 +115,21 @@ export class GeneralInformationComponent {
       return;
     }
 
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      this.showError('Please select a JPEG, PNG, or WebP image');
+      return;
+    }
+
+    if (file.size === 0) {
+      this.showError('Please select a non-empty image file');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      this.showError('Image must be 5 MB or smaller');
+      return;
+    }
+
     const revision = ++this.imageRevision;
     this.stopReadingPhoto();
 
@@ -127,15 +143,41 @@ export class GeneralInformationComponent {
       }
 
       this.activeReader = null;
-      this.isReadingPhoto.set(false);
 
       if (typeof reader.result !== 'string') {
+        this.isReadingPhoto.set(false);
         this.handlePhotoReadError();
         return;
       }
 
-      this.photoChanged = true;
-      this.profileImage.set(reader.result);
+      const image = new Image();
+      this.activeImage = image;
+      image.onload = () => {
+        if (this.activeImage !== image || revision !== this.imageRevision) {
+          return;
+        }
+
+        this.activeImage = null;
+        this.isReadingPhoto.set(false);
+
+        if (image.naturalWidth > 4096 || image.naturalHeight > 4096) {
+          this.showError('Image dimensions must not exceed 4096 × 4096 pixels');
+          return;
+        }
+
+        this.photoChanged = true;
+        this.profileImage.set(reader.result as string);
+      };
+      image.onerror = () => {
+        if (this.activeImage !== image || revision !== this.imageRevision) {
+          return;
+        }
+
+        this.activeImage = null;
+        this.isReadingPhoto.set(false);
+        this.showError('Please select a valid image file');
+      };
+      image.src = reader.result;
     };
 
     reader.onerror = () => {
@@ -167,6 +209,8 @@ export class GeneralInformationComponent {
     }
 
     const { firstName, lastName } = this.userForm.getRawValue();
+    const namesChanged =
+      firstName !== user.firstName || lastName !== user.lastName;
     const imageToUpload = this.photoChanged ? this.profileImage() : null;
     const imageRevision = this.imageRevision;
     const userRevision = this.userRevision;
@@ -174,7 +218,11 @@ export class GeneralInformationComponent {
 
     this.isSaving.set(true);
 
-    this.authenticationService.editProfile(firstName, lastName)
+    const profileUpdate$ = namesChanged
+      ? this.authenticationService.editProfile(firstName, lastName)
+      : of('unchanged');
+
+    profileUpdate$
       .pipe(
         concatMap((response) => {
           if (userRevision !== this.userRevision) {
@@ -183,6 +231,14 @@ export class GeneralInformationComponent {
 
           if (!response) {
             return throwError(() => new Error('Failed to update profile'));
+          }
+
+          if (namesChanged) {
+            this.user.update((currentUser) =>
+              currentUser
+                ? { ...currentUser, firstName, lastName }
+                : currentUser,
+            );
           }
 
           if (!imageToUpload) {
@@ -214,7 +270,11 @@ export class GeneralInformationComponent {
 
           if (uploadingPhoto) {
             console.error('Failed to upload profile image', error);
-            this.showError('Failed to upload profile image');
+            this.showError(
+              namesChanged
+                ? 'Your name changes were saved, but the photo upload failed. Click Save Changes to retry the photo.'
+                : 'Failed to upload profile image',
+            );
           } else {
             this.showError();
           }
@@ -250,6 +310,7 @@ export class GeneralInformationComponent {
     const reader = this.activeReader;
     this.activeReader = null;
     this.isReadingPhoto.set(false);
+    this.activeImage = null;
 
     if (reader?.readyState === FileReader.LOADING) {
       reader.abort();

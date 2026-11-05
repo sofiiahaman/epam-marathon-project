@@ -48,7 +48,6 @@ describe('GeneralInformationComponent', () => {
   let readers: FileReader[];
   let images: HTMLImageElement[];
 
-  let readerResults: WeakMap<FileReader, string>;
   let readerStates: WeakMap<FileReader, FileReader['readyState']>;
 
   beforeEach(async () => {
@@ -77,19 +76,7 @@ describe('GeneralInformationComponent', () => {
 
     readers = [];
     images = [];
-    readerResults = new WeakMap();
     readerStates = new WeakMap();
-
-    // Control callbacks without reading or decoding real files.
-    spyOnProperty(FileReader.prototype, 'result', 'get')
-      .and.callFake(function (this: FileReader) {
-      return readerResults.get(this) ?? null;
-    });
-
-    spyOnProperty(FileReader.prototype, 'readyState', 'get')
-      .and.callFake(function (this: FileReader) {
-      return readerStates.get(this) ?? FileReader.EMPTY;
-    });
 
     readSpy = spyOn(
       FileReader.prototype,
@@ -97,6 +84,11 @@ describe('GeneralInformationComponent', () => {
     ).and.callFake(function (this: FileReader) {
       readers.push(this);
       readerStates.set(this, FileReader.LOADING);
+      Object.defineProperty(this, 'readyState', {
+        configurable: true,
+        writable: true,
+        value: FileReader.LOADING,
+      });
     });
 
     abortSpy = spyOn(
@@ -104,6 +96,11 @@ describe('GeneralInformationComponent', () => {
       'abort',
     ).and.callFake(function (this: FileReader) {
       readerStates.set(this, FileReader.DONE);
+      Object.defineProperty(this, 'readyState', {
+        configurable: true,
+        writable: true,
+        value: FileReader.DONE,
+      });
     });
 
     spyOnProperty(
@@ -172,8 +169,19 @@ describe('GeneralInformationComponent', () => {
     reader: FileReader,
     data = selectedImage,
   ): void {
-    readerResults.set(reader, data);
     readerStates.set(reader, FileReader.DONE);
+    Object.defineProperties(reader, {
+      result: {
+        configurable: true,
+        writable: true,
+        value: data,
+      },
+      readyState: {
+        configurable: true,
+        writable: true,
+        value: FileReader.DONE,
+      },
+    });
 
     reader.onload?.call(
       reader,

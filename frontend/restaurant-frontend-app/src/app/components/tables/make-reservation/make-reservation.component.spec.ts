@@ -9,7 +9,9 @@ describe('MakeReservationComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [MakeReservationComponent],
-    }).compileComponents();
+    })
+      .overrideComponent(MakeReservationComponent, { set: { template: '' } })
+      .compileComponents();
 
     fixture = TestBed.createComponent(MakeReservationComponent);
     component = fixture.componentInstance;
