@@ -148,7 +148,7 @@ jobs:
           echo "filter=$filter" >> "$GITHUB_OUTPUT"
 
       - name: Seed persistent demo data
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.seed_demo_data }}
+        if: ${{ github.event_name != 'pull_request' }}
         shell: bash
         env:
           SEED_USERNAME: ${{ secrets.AQA_WAITER_USERNAME }}
@@ -187,29 +187,47 @@ jobs:
           existing="$(json_response GET "$API_URL/locations")"
           location_id="$(jq -r '.[] | select(.address == "Manual-AQA-Demo") | .id' <<< "$existing" | head -n 1)"
 
-          if [[ -n "$location_id" && "$location_id" != "null" ]]; then
-            echo "Persistent demo data already exists for location $location_id; leaving it unchanged."
-            exit 0
+          if [[ -z "$location_id" || "$location_id" == "null" ]]; then
+            location_payload='{"address":"Manual-AQA-Demo","description":"Persistent data for manual verification","totalCapacity":40,"averageOccupancy":"0"}'
+            location="$(json_response POST "$API_URL/locations" "$location_payload")"
+            location_id="$(jq -er '.id' <<< "$location")"
+            echo "Created demo location $location_id."
+          else
+            echo "Demo location already exists: $location_id."
           fi
 
-          location_payload='{"address":"Manual-AQA-Demo","description":"Persistent data for manual verification","totalCapacity":40,"averageOccupancy":"0"}'
-          location="$(json_response POST "$API_URL/locations" "$location_payload")"
-          location_id="$(jq -er '.id' <<< "$location")"
+          tables="$(json_response GET "$API_URL/locations/$location_id/tables/all")"
+          table_id="$(jq -r '[.[] | select(.capacity >= 3) | .id][0] // empty' <<< "$tables")"
+
+          if [[ -z "$table_id" ]]; then
+            for table in 2 4 8; do
+              table_payload="$(jq -cn --arg location_id "$location_id" --argjson capacity "$table" \
+                '{locationId: $location_id, capacity: $capacity, tableNumber: $capacity + 100}')"
+              created_table="$(json_response POST "$API_URL/tables" "$table_payload")"
+              if [[ "$table" == "8" ]]; then
+                table_id="$(jq -er '.id' <<< "$created_table")"
+              fi
+            done
+            echo "Created demo tables."
+          else
+            echo "Demo table already exists: $table_id."
+          fi
 
           for dish in \
             '{"name":"Manual-AQA-Pasta","description":"Demo pasta","dishType":"MainCourse","price":18.50,"weight":"350g","calories":"650","proteins":"20","fats":"18","carbohydrates":"75","vitamins":"A, C","locationIds":[],"state":"Available"}' \
             '{"name":"Manual-AQA-Salad","description":"Demo salad","dishType":"Appetizer","price":9.50,"weight":"220g","calories":"240","proteins":"8","fats":"10","carbohydrates":"25","vitamins":"A, C","locationIds":[],"state":"Available"}' \
             '{"name":"Manual-AQA-Cake","description":"Demo dessert","dishType":"Dessert","price":7.50,"weight":"160g","calories":"420","proteins":"6","fats":"19","carbohydrates":"55","vitamins":"B, C","locationIds":[],"state":"Available"}'
           do
-            dish_payload="$(jq -c --arg location_id "$location_id" '.locationIds = [$location_id]' <<< "$dish")"
-            json_response POST "$API_URL/dishes" "$dish_payload" >/dev/null
+            dish_name="$(jq -r '.name' <<< "$dish")"
+            existing_dish="$(json_response GET "$API_URL/dishes" | jq -r --arg name "$dish_name" '.[] | select(.name == $name) | .id' | head -n 1)"
+            if [[ -z "$existing_dish" || "$existing_dish" == "null" ]]; then
+              dish_payload="$(jq -c --arg location_id "$location_id" '.locationIds = [$location_id]' <<< "$dish")"
+              json_response POST "$API_URL/dishes" "$dish_payload" >/dev/null
+            fi
           done
 
-          for table in 2 4 8; do
-            table_payload="$(jq -cn --arg location_id "$location_id" --argjson capacity "$table" \
-              '{locationId: $location_id, capacity: $capacity, tableNumber: $capacity + 100}')"
-            json_response POST "$API_URL/tables" "$table_payload" >/dev/null
-          done
+          echo "TESTTABLE_ID=$table_id" >> "$GITHUB_ENV"
+          echo "TESTTABLE_ID configured for this run."
 
           echo "Created persistent demo data."
           echo "Location ID: $location_id"
