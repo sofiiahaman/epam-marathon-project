@@ -149,6 +149,7 @@ jobs:
 
       - name: Seed persistent demo data
         if: ${{ github.event_name != 'pull_request' }}
+        continue-on-error: true
         shell: bash
         env:
           SEED_USERNAME: ${{ secrets.AQA_WAITER_USERNAME }}
@@ -243,6 +244,7 @@ jobs:
       # with `if: always()` so they still publish when this step reports a failure.
       - name: Run tests
         id: run_tests
+        if: always()
         continue-on-error: true
         run: |
           if [ -n "${{ steps.filter.outputs.filter }}" ]; then
