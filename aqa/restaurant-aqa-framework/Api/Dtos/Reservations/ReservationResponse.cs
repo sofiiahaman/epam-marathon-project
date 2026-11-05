@@ -11,4 +11,6 @@ public sealed record ReservationResponse(
     string WaiterId,
     string LocationAddress,
     string RestaurantName,
-    bool HasSubmittedPreOrder);
+    bool HasSubmittedPreOrder,
+    string? GroupReservationId = null,
+    string? GroupReservationStatus = null);
