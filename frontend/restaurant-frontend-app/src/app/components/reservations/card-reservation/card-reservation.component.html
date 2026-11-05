@@ -170,6 +170,16 @@
             Pre-order
           </button>
         }
+
+        @if (role() === Roles.CUSTOMER && r().groupReservationId) {
+          <button
+            type="button"
+            class="button button--secondary button--large"
+            (click)="groupPreorder.emit(r())"
+          >
+            Group pre-order
+          </button>
+        }
       }
 
       @case (ReservationStatusCustomer.InProgress) {

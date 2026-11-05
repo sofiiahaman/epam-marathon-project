@@ -92,6 +92,7 @@ export class CardReservationComponent {
   }>();
 
   readonly preOrder = output<CreateOrderRequest>();
+  readonly groupPreorder = output<ReservationCustomer>();
   readonly showWaiterOrderModal = signal(false);
 
   readonly statusView = computed<ReservationStatusView>(() => {

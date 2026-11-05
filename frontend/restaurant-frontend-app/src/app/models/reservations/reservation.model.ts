@@ -1,5 +1,6 @@
 import { FeedbackReservationResponseItem } from '../feedbacks/feedback-reservation-response-item.model';
 import { Order } from '../orders/order.model';
+import { GroupReservationStatus } from '../group-preorder/group-preorder.model';
 
 export interface Reservation {
   id: string;
@@ -17,6 +18,8 @@ export interface Reservation {
   preOrder?: Order;
   preOrders?: Order[];
   guestInviteLinkAvailable?: boolean;
+  groupReservationId?: string;
+  groupReservationStatus?: GroupReservationStatus;
 }
 
 export enum ReservationStatus {
@@ -44,6 +47,8 @@ export interface ReservationCustomer {
   preOrders?: Order[];
   createdByName?: string;
   createdByRole?: 'Customer' | 'Waiter';
+  groupReservationId?: string;
+  groupReservationStatus?: GroupReservationStatus;
 }
 
 export enum ReservationStatusCustomer {
